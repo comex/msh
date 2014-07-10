@@ -1,4 +1,5 @@
 #pragma once
+#include "misc.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -10,13 +11,6 @@ struct __vec_internal {
    void *base;
    void *storage[0];
 };
-
-static inline size_t safe_mul(size_t a, size_t b) {
-   size_t res = a * b;
-   if(res / b != a)
-      abort();
-   return res;
-}
 
 static inline void __vec_realloc(struct __vec_internal *vi, size_t n, size_t esize) {
    if(n > vi->capacity && n < vi->capacity * 2)
@@ -49,26 +43,7 @@ static inline void __vec_free(struct __vec_internal *vi) {
 
 #define VEC_MTYPE(vec) __typeof((vec)((struct __vec_marker) {}))
 
-#define vget(vec, n) (*vgetp(vec, n))
-
-#define vset(vec, n, val) ({ \
-   typeof(vec) __v = (vec); /* for sequence */ \
-   *vgetp(__v, n) = val; \
-})
-
-#define vgetp(vec, n) ({ \
-   struct __vec_internal *__vi = (void *) (vec); \
-   &((VEC_MTYPE(vec) *) __vi->base)[n]; \
-})
-
-#define vresize(vec, n) ({ \
-   struct __vec_internal *__vi = (void *) (vec); \
-   size_t __n = (n); \
-   if(__n >= __vi->capacity || (__vi->base != __vi->storage && __n * 2 < __vi->capacity)) \
-      __vec_realloc(__vi, __n, sizeof(VEC_MTYPE(vec))); \
-   __vi->length = __n; \
-   &((VEC_MTYPE(vec) *) __vi->base)[n]; \
-})
+#define VEC_INTERNAL(vec) ((struct __vec_internal *) (VEC_MTYPE(vec) *) (vec))
 
 __attribute__((always_inline))
 static inline void __vec_stackalloc_cleanup(void *p) {
@@ -97,4 +72,49 @@ static inline void __vec_stackalloc_cleanup(void *p) {
 #define vec_alloc(ty) vec_alloc_capa(ty, VEC_DEFAULT_CAPA)
 
 // heap only
-#define vec_free(vec) __vec_free((void *) (VEC_MTYPE(vec) *) (vec))
+#define vec_free(vec) __vec_free(VEC_INTERNAL(vec))
+
+// manipulation
+
+#define vget(vec, n) (*vgetp(vec, n))
+
+#define vset(vec, n, val) ({ \
+   typeof(vec) __v = (vec); /* for sequence */ \
+   *vgetp(__v, n) = val; \
+})
+
+#define vgetp(vec, n) ({ \
+   struct __vec_internal *__vi = (void *) (vec); \
+   &((VEC_MTYPE(vec) *) __vi->base)[n]; \
+})
+
+#define vresize(vec, n) ({ \
+   struct __vec_internal *__vi = (void *) (vec); \
+   size_t __n = (n); \
+   if(__n >= __vi->capacity || (__vi->base != __vi->storage && __n * 2 < __vi->capacity)) \
+      __vec_realloc(__vi, __n, sizeof(VEC_MTYPE(vec))); \
+   __vi->length = __n; \
+   &((VEC_MTYPE(vec) *) __vi->base)[n]; \
+})
+
+#define vappend(vec, val) ({ \
+   struct __vec_internal *__vi = VEC_INTERNAL(vec); \
+   size_t __l = __vi->length; \
+   vresize(__vi, __l + 1); \
+   vset(__vi, __l, val); \
+})
+
+#define vlen(vec) (VEC_INTERNAL(vec)->length)
+
+#define vec_zero(vec) ({ \
+   struct __vec_internal *__vi = VEC_INTERNAL(vec); \
+   memset(__vi->base, 0, sizeof(VEC_MTYPE(vec)) * __vi->length); \
+})
+
+#define vec_foreach(vec, idxvar, valvar) \
+   for(size_t idxvar = 0; idxvar < VEC_INTERNAL(vec)->length; idxvar++) \
+      LET(valvar = vget(vec, idxvar))
+
+#define vec_foreach_nodecl(vec, idxvar, valvar) \
+   for(idxvar = 0; idxvar < VEC_INTERNAL(vec)->length; idxvar++) \
+      LET(valvar = vget(vec, idxvar))
