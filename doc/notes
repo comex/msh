@@ -1,0 +1,75 @@
+cmd args - invoke command (duh)
+    **Failure throws an exception by default.**
+    >, >&, etc. work as in bash
+    ?cmd args - returns status
+    ?,1,2 cmd args - return (status stdout stderr)
+    <- - pipes from a string (same as bash's <<<)
+        3<-foo - pipes to fd 3
+        3<-[cmd] - pipes output of cmd to fd 3
+                   (same as normal semantics except streaming)
+    >- - pipes to a path expression or reference
+        >-foo`2
+        ref=$&foo`2; cmd >-$ref
+
+[cmd args] - subshell
+    ie [?grep -q foo <<'lol lol'] NO YES
+
+(a b c) - list
+    Lists are automatically turned into (recursively) shell-quoted strings:
+        echo (a b c) # a b c  [as one argument]
+        echo ((a b) (c d)) # 'a b' 'c d'
+    Can expand into multiple arguments with *:
+        x=(-l /)
+        ls *$x
+
+{ } - block
+    The receiver of the block can assign block-scoped locals:
+        =x { echo $a $b }
+        $x --a=foo --b=bar
+        =y { echo $1 $2}
+        $y foo bar
+        (This does not apply to passing arguments to the script itself.)
+        This ability to not explicitly specify arguments enables things like
+            match -i $line '(:<foo>[a-z]+)' {
+                echo $foo
+            } else {
+                echo nope
+            }
+    Like Ruby blocks, they are not functions and can break out of the caller.
+    Can pass to external commands - the shell creates a stub executable that communicates back to it:
+        echo { stuff } # /tmp/mshblock-12345-f0f0f0f0f0
+        find / -exec { stuff } \; # Just Works
+
+$ - variable
+
+$& - references
+    Like in Perl, containers copy by default, refs are explicit:
+        =px $&x
+        =px[] foobar
+        echo $x # foobar
+    However, when coercing to a type, deref is automatic.  So you can say
+        str-find $px bar # 3
+
+$x`0`foo - path get
+    =x`0, $&x`0 also work
+    empty key (x`) - derefs a reference (usually implicit)
+
+
+"" - quotes
+    within quotes, special forms apply:
+        ${x[0][2]}
+        $[echo hi]
+    '' follows same stupid rules as bash for consistency.
+    heredocs also work but require 3 brackets like PHP
+
+General expansion rules
+    $var not automatically expanded like in bash.  It's equivalent to "$var".
+    But foo$var, "foo{$var}bar" both work.
+    Coercion between strings, numbers, lists (except string->list) is implicit.  (Unpopular these days, but interactive programming thrives on succinctness.)
+
+
+
+built-in commands
+
+@ - echo without newline
+    @foobar | ucase # FOOBAR
