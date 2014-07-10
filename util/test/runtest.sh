@@ -2,7 +2,7 @@
 set -e
 [ -z "$CC" ] && CC="/usr/local/Cellar/llvm/3.4.1/bin/clang -fsanitize=undefined"
 for file in misctest.c vectest.c; do
-   $CC -O3 -I.. -o thetest $file
+   $CC -O3 -I../.. -o thetest $file
    set +e
    actual="$(./thetest)"
    actual_ec=$?

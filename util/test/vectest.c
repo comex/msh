@@ -1,4 +1,4 @@
-#include "vec.h"
+#include "util/vec.h"
 #include <stdio.h>
 
 __attribute__((noinline))
