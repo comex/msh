@@ -8,9 +8,10 @@ cmd args - invoke command (duh)
         3<-[cmd] - pipes output of cmd to fd 3
                    (same as normal semantics except streaming)
         if command is omitted, just echoes it (sans trailing \n)
-    >- - pipes to a path expression or reference
-        >-foo`2
-        ref=$&foo`2; cmd >-$ref
+    -> - pipes to a path expression, reference, or block
+        ->foo`2
+        ref=&$foo`2; cmd ->$ref
+        cmd 2->{echo "Errors:"; cat} | ...
 
 [cmd args] - subshell
     ie [?grep -q foo <<'lol lol'] NO YES
@@ -44,17 +45,19 @@ cmd args - invoke command (duh)
 
 $ - variable
 
-$& - references
+&$ - references
     Like in Perl, containers copy by default, refs are explicit:
-        =px $&x
-        =px[] foobar
+        =px &$x
+        =px` foobar
         echo $x # foobar
      However, when coercing to a type, deref is automatic.  So you can say
         str-find $px bar # 3
 
 $x`0`foo - path get
-    =x`0, $&x`0 also work
+    =x`0, &$x`0 also work
     empty key (x`) - derefs a reference (usually implicit)
+    indexes of the form {foo} are just expanded
+        (eww, but necessary for $foo`{$bar`2})
 
 
 "" - quotes
@@ -78,6 +81,8 @@ Special rules for arguments starting with -
     echo \-foobar - avoid auto-optstr
     optstr $str - optstr constructor
     tostr $optstr - un-optstr a variable
+    opts $list - makes appropriate entries into optstrs
+    opts &$list - optsifies the variable
 
     Builtin commands only accept options as optstrs.  Thus you can say
         [toint $foo]
@@ -89,15 +94,7 @@ Special rules for arguments starting with -
     interests of correctness and security, in lieu of such a fixup, msh will
     refuse to execute the command.
 
-    Usually, wanting to expand arguments from a variable is equivalent to
-    wanting it to contain options - allowing a variable to contain exactly one
-    option is not particularly reasonable, and there aren't many tools that accept an indeterminate list of arguments 
-    NO
-        
-    
-    
-
-
+    Todo: Is it worth it to have -*$foo = *[opts $foo]?  Reserve this.
 
 built-in commands
 
