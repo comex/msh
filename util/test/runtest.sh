@@ -11,7 +11,8 @@ else
 fi
 for file in $TESTS; do
    for cc in "${CCS[@]}"; do
-      $cc -O3 -I../.. -o thetest $file
+      echo "<$file $cc>"
+      $cc -std=gnu11 -O3 -I../.. -o thetest $file
       set +e
       actual="$(./thetest)"
       actual_ec=$?
@@ -30,7 +31,7 @@ for file in $TESTS; do
          echo "$file exit differs.  Actual: $actual_ec  Expected: $expected_ec"
          bad=1
       fi
-      -z $bad
+      test -z $bad
    done
 done
 
