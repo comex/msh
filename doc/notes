@@ -7,6 +7,7 @@ cmd args - invoke command (duh)
         3<-foo - pipes to fd 3
         3<-[cmd] - pipes output of cmd to fd 3
                    (same as normal semantics except streaming)
+        if command is omitted, just echoes it (sans trailing \n)
     >- - pipes to a path expression or reference
         >-foo`2
         ref=$&foo`2; cmd >-$ref
@@ -21,6 +22,7 @@ cmd args - invoke command (duh)
     Can expand into multiple arguments with *:
         x=(-l /)
         ls *$x
+        - Also works for strings
 
 { } - block
     The receiver of the block can assign block-scoped locals:
@@ -47,7 +49,7 @@ $& - references
         =px $&x
         =px[] foobar
         echo $x # foobar
-    However, when coercing to a type, deref is automatic.  So you can say
+     However, when coercing to a type, deref is automatic.  So you can say
         str-find $px bar # 3
 
 $x`0`foo - path get
@@ -57,19 +59,45 @@ $x`0`foo - path get
 
 "" - quotes
     within quotes, special forms apply:
-        ${x[0][2]}
+        ${x`0`foo bar}
         $[echo hi]
+
     '' follows same stupid rules as bash for consistency.
     heredocs also work but require 3 brackets like PHP
 
 General expansion rules
     $var not automatically expanded like in bash.  It's equivalent to "$var".
-    But foo$var, "foo{$var}bar" both work.
-    Coercion between strings, numbers, lists (except string->list) is implicit.  (Unpopular these days, but interactive programming thrives on succinctness.)
+    But foo$var, "foo${var}bar" both work.
+    Coercion between strings, numbers, lists (except string->list) is implicit.
+        (Unpopular these days, but interactive programming thrives on
+        succinctness.)
+
+Special rules for arguments starting with -
+    They are turned into optstrs.
+    echo "-foobar" - still an optstr (because of things like config.status output)
+    echo \-foobar - avoid auto-optstr
+    optstr $str - optstr constructor
+    tostr $optstr - un-optstr a variable
+
+    Builtin commands only accept options as optstrs.  Thus you can say
+        [toint $foo]
+    without getting messed up if $foo is -x.
+
+    Builtin wrappers for external commands should try to simulate this by
+    adding -- to fix up non-optstr arguments starting with - (*and not already
+    following --*), as long as it doesn't otherwise change meaning.  In the
+    interests of correctness and security, in lieu of such a fixup, msh will
+    refuse to execute the command.
+
+    Usually, wanting to expand arguments from a variable is equivalent to
+    wanting it to contain options - allowing a variable to contain exactly one
+    option is not particularly reasonable, and there aren't many tools that accept an indeterminate list of arguments 
+    NO
+        
+    
+    
 
 
 
 built-in commands
 
-@ - echo without newline
-    @foobar | ucase # FOOBAR
