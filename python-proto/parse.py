@@ -23,12 +23,16 @@ class Peeker:
 
     def rewind(self):
         self.offset -= 1
+        self.peek = self.str[self.offset]
 
 AsyncMarker = 'AsyncMarker'
 
 spaces_except_newline = {' ', '\t', '\r'}
 spaces = {' ', '\t', '\r', '\n'}
-bareword_enders = spaces | {')', ']', '{', '}', '<', '>', '|', None}
+bareword_enders = spaces | {')', ']', '{', '}', '<', '>', '|', '`', '#', ';', '\n', None}
+var_enders = bareword_enders | {'(', '[', '$'}
+bareword_enders_expr = '($|[ \t\r\n)\]{}<>|`#;\n])'
+bareword_enders_re = re.compile(bareword_enders_expr)
 escape_chars = {
     'a': '\a', 'b': '\b', 'f': '\f', 'n': '\n', 'r': '\r', 't': '\t', 'v': '\v'
 }
@@ -39,19 +43,24 @@ symbol_cmd_enders = bareword_enders | {'[', '"', "'", '$'} | letters | digits
 
 # ) ] } done
 # in C the peek_exec stuff needs to be one big function
-bareword_enders_expr = '($|[ \t\r\n])'
+
 always_enders_expr = '\)|\]|}|$|done' + bareword_enders_expr
 always_enders_re = re.compile(always_enders_expr)
 always_enders_and_semicolon_re = re.compile(';|\n|' + always_enders_expr)
 always_enders_and_semicolon_pipe_re = re.compile('\||;|\n|' + always_enders_expr)
 
+
 def all_numeric(x):
     return bool(re.match('^[0-9]+$', x))
 
-class ParseError(Exception): pass
+class ParseError(Exception):
+    def __init__(self, pkr, msg):
+        msg = '%s\nremaining: %r' % (msg, pkr.str[pkr.offset:pkr.offset+20])
+        Exception.__init__(self, msg)
 
 class Parser(Peeker):
     def translate_escape(self):
+        assert self.read() == '\\'
         c = self.read()
         if c == 'x':
             # hex
@@ -61,9 +70,9 @@ class Parser(Peeker):
             try:
                 hexnum = int(hexstr, 16)
             except ValueError:
-                raise ParseError('bad hex code \\x%s' % hexstr)
+                raise ParseError(self, 'bad hex code \\x%s' % hexstr)
             if hexnum > 255:
-                raise ParseError('bad non-unicode escape code for character %d' % hexnum)
+                raise ParseError(self, 'bad non-unicode escape code for character %d' % hexnum)
             return chr(hexnum)
         elif c in escape_chars:
             return escape_chars[c]
@@ -75,12 +84,12 @@ class Parser(Peeker):
             try:
                 octnum = int(octstr, 8)
             except ValueError:
-                raise ParseError('bad octal code \\%s' % octstr)
+                raise ParseError(self, 'bad octal code \\%s' % octstr)
             if octnum > 255:
-                raise ParseError('bad non-unicode escape code for character %d' % octnum)
+                raise ParseError(self, 'bad non-unicode escape code for character %d' % octnum)
             return chr(octnum)
         elif c in letters:
-            raise ParseError('unknown alphabetic escape code \\%s' % c)
+            raise ParseError(self, 'unknown alphabetic escape code \\%s' % c)
         else:
             return c
     def parse_dblquote(self):
@@ -90,6 +99,7 @@ class Parser(Peeker):
         while self.peek != '"':
             c = self.read()
             if c == '\\':
+                self.rewind()
                 the_str += self.translate_escape()
             elif c == '$':
                 if the_str:
@@ -105,7 +115,7 @@ class Parser(Peeker):
                     if self.peek == '`':
                         bit = self.parse_path(bit)
                     if self.peek != '}':
-                        raise ParseError('${} not closed')
+                        raise ParseError(self, '${} not closed')
                     bits.append(bit)
                 else:
                     self.rewind()
@@ -130,7 +140,7 @@ class Parser(Peeker):
         return out
 
     def parse_bareword_out_expr(self):
-        bit = self.parse_bareword()
+        return self.parse_bareword() # XXX
 
     def parse_bareword(self, is_cmd=False):
         bits = []
@@ -150,14 +160,14 @@ class Parser(Peeker):
                 # it's just &
                 return AsyncMarker
             elif self.peek == '&':
-                raise ParseError('double &')
+                raise ParseError(self, 'double &')
             rest = self.parse_bareword()
             if isinstance(rest, (Var, Index)):
                 assert not rest.is_ref
                 rest.is_ref = True
                 return rest
             else:
-                raise ParseError('& must be followed by an index or variable expression')
+                raise ParseError(self, '& must be followed by an index or variable expression')
         elif self.peek == '*':
             the_str += '*'
             is_glob = True
@@ -169,6 +179,8 @@ class Parser(Peeker):
             # block
             self.read((1, 2)[self.peek == 'd'])
             return ast.Block(self.parse_exec_(re.compile('}|done')))
+        elif self.peek == '(':
+            return self.parse_list()
 
         def add_this_bit():
             nonlocal the_str, is_glob
@@ -204,17 +216,25 @@ class Parser(Peeker):
         add_this_bit()
 
         if len(bits) == 0:
-            raise Exception("shouldn't get to parse_bareword() with only a bareword_ender in store")
+            raise ParseError(self, "shouldn't get to parse_bareword() with only a bareword_ender in store")
         elif len(bits) == 1:
-            node = bits[0]
+            bit = bits[0]
         else:
-            node = ast.Exec(ast.Lit('str-concat'), bits, redirs=[], is_async=False)
+            bit = ast.Exec(ast.Lit('str-concat'), bits, redirs=[], is_async=False)
 
-        return node
+        if self.peek == '`':
+            bit = self.parse_path(bit)
+
+        return bit
 
     def skip_white(self):
-        while self.peek in spaces_except_newline:
-            self.read()
+        while True:
+            while self.peek in spaces_except_newline:
+                self.read()
+            if self.peek == '#':
+                self.parse_comment()
+            else:
+                break
 
     def parse_exec(self):
         assert self.read() == '['
@@ -231,7 +251,7 @@ class Parser(Peeker):
             bits.append(bit)
         m = self.peek_re(ender)
         if not m:
-            raise ParseError('Mismatched brackets - got %s, expected %s' % (self.peek, (ender or '<end of data>')))
+            raise ParseError(self, 'Mismatched brackets - got %s, expected %s' % (self.peek, (ender or '<end of data>')))
         if self.peek is not None:
             self.read(len(m.group(0)))
         return bits[0] if len(bits) == 1 else ast.Sequence(bits)
@@ -239,7 +259,7 @@ class Parser(Peeker):
     def parse_exec_pipeline(self):
         bits = []
         had_empty = False
-        while not (self.peek is None or self.peek_re(always_enders_and_semicolon_re)):
+        while not self.peek_re(always_enders_and_semicolon_re):
             bit = self.parse_exec_single()
             if self.peek == '|':
                 self.read()
@@ -248,7 +268,7 @@ class Parser(Peeker):
                 continue
             bits.append(bit)
         if had_empty and len(bits) > 1:
-            raise ParseError('empty command in a pipeline')
+            raise ParseError(self, 'empty command in a pipeline')
         if len(bits) == 0:
             return None
         return bits[0] if len(bits) == 1 else ast.Pipe(bits)
@@ -260,9 +280,9 @@ class Parser(Peeker):
         is_async = False
         while True:
             self.skip_white()
-            if self.peek is None or self.peek_re(always_enders_and_semicolon_re):
+            if self.peek_re(always_enders_and_semicolon_re):
                 break
-            if self.peek is not None and self.peek in '<>' or (self.peek == '-' and self.peek_more(1) == '>'):
+            if self.peek_re(re.compile('<|>|->')):
                 redirs.extend(self.parse_redir(None))
                 continue
 
@@ -272,7 +292,7 @@ class Parser(Peeker):
                 is_async = True
                 break # [foo & bar] = [foo &; bar] like bash
             # yucky
-            if self.peek is not None and self.peek in '<->' and isinstance(node, ast.Lit) and all_numeric(node.str) and (self.peek != '-' or self.peek_more(1) == '>'):
+            if isinstance(node, ast.Lit) and all_numeric(node.str) and self.peek_re(re.compile('<|>|->')):
                 redirs.extend(self.parse_redir(int(node.str)))
                 continue
             # ok, it's an arg
@@ -301,7 +321,7 @@ class Parser(Peeker):
                 endpoint = self.parse_bareword()
             else:
                 filename = self.parse_bareword()
-                endpoint = ast.Exec(ast.Lit('read-file'), [ast.Lit(filename)], [], is_async=False)
+                endpoint = ast.Exec(ast.Lit('read-file'), [filename], [], is_async=False)
         elif c == '>':
             dir = ast.OUT
             if fd is None:
@@ -313,7 +333,7 @@ class Parser(Peeker):
             if out_and_err and isinstance(filename, ast.Lit) and all_numeric(filename.str):
                 # it's actually a>&b
                 return [ast.RedirOtherFd(fd, int(filename.str))]
-            endpoint = ast.Block(ast.Exec(ast.Lit('write-to-file'), [ast.Lit(filename)], [], is_async=False))
+            endpoint = ast.Block(ast.Exec(ast.Lit('write-to-file'), [filename], [], is_async=False))
         else:
             dir = ast.OUT
             assert c == '-' and self.read() == '>'
@@ -327,11 +347,52 @@ class Parser(Peeker):
         else:
             return [bit]
 
+    def parse_list(self):
+        assert self.read() == '('
+        bits = []
+        while True:
+            # skip white, *including* newline
+            while self.peek in spaces:
+                self.read()
+            if self.peek == '#':
+                self.parse_comment()
+                continue
+            if self.peek_re(always_enders_re):
+                break
+            bits.append(self.parse_bareword())
+        if self.peek != ')':
+            raise ParseError(self, 'Mismatched brackets - got %s, expected )' % self.peek)
+        self.read()
+        return ast.List(bits)
+
+    def parse_var(self):
+        assert self.read() == '$'
+        name = ''
+        while self.peek not in var_enders:
+            # allow unicodey escapes in var names
+            if self.peek_re(re.compile('\\[xuU]')):
+                name += self.translate_escape()
+            elif self.peek == '\\':
+                break
+            else:
+                name += self.read()
+        return ast.Var(False, name)
+
+    def parse_comment(self):
+        assert self.read() == '#'
+        while self.read() != '\n':
+            pass
+
     def parse_outer(self):
         return self.parse_exec_(re.compile('$'))
 
 if __name__ == '__main__':
-    inp = "foo'bar'\"baz\"` [bar bar >&1]\nhi do = x 6 } {=x 5}"
+    import sys
+    if len(sys.argv) >= 2:
+        inp = open(sys.argv[1]).read()
+    else:
+        inp = "foo'bar'\"baz\"` [bar bar >&1]\nhi do = x 6 } {=x 5}"
     parsed = Parser(inp).parse_outer()
     print(parsed)
+    print()
     print(parsed.repr())

@@ -20,7 +20,7 @@ class Lit(collections.namedtuple('Lit', [
             # real version should be more unicode-respectful
             if not curses.ascii.isprint(char) or (curses.ascii.isspace(char) and char != ' '):
                 fancy = True
-                out += repr(char)
+                out += repr(char)[1:-1]
             elif char in '"\\$':
                 fancy = True
                 out += '\\' + char
