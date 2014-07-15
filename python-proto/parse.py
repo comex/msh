@@ -113,7 +113,7 @@ class Parser(Peeker):
                     self.peek = '$'
                     bit = self.parse_var()
                     if self.peek == '`':
-                        bit = self.parse_path(bit)
+                        bit = self.parse_path(bit, quoted_mode=True)
                     if self.peek != '}':
                         raise ParseError(self, '${} not closed')
                     bits.append(bit)
@@ -142,7 +142,13 @@ class Parser(Peeker):
     def parse_bareword_out_expr(self):
         return self.parse_bareword() # XXX
 
-    def parse_bareword(self, is_cmd=False):
+    def parse_bareword(self, is_cmd=False, async_ok=False):
+        bit = self.parse_bareword_nopath()
+        if self.peek == '`':
+            bit = self.parse_path(bit)
+        return bit
+
+    def parse_bareword_nopath(self, is_cmd=False, async_ok=False):
         bits = []
         the_str = ''
         is_glob = False
@@ -158,6 +164,8 @@ class Parser(Peeker):
             self.read()
             if self.peek in bareword_enders:
                 # it's just &
+                if not async_ok:
+                    raise ParseError('& not accepted here')
                 return AsyncMarker
             elif self.peek == '&':
                 raise ParseError(self, 'double &')
@@ -218,14 +226,9 @@ class Parser(Peeker):
         if len(bits) == 0:
             raise ParseError(self, "shouldn't get to parse_bareword() with only a bareword_ender in store")
         elif len(bits) == 1:
-            bit = bits[0]
+            return bits[0]
         else:
-            bit = ast.Exec(ast.Lit('str-concat'), bits, redirs=[], is_async=False)
-
-        if self.peek == '`':
-            bit = self.parse_path(bit)
-
-        return bit
+            return ast.Exec(ast.Lit('str-concat'), bits, redirs=[], is_async=False)
 
     def skip_white(self):
         while True:
@@ -286,7 +289,7 @@ class Parser(Peeker):
                 redirs.extend(self.parse_redir(None))
                 continue
 
-            node = self.parse_bareword(is_cmd=(cmd is None))
+            node = self.parse_bareword(is_cmd=(cmd is None), async_ok=True)
             assert node is not None
             if node is AsyncMarker:
                 is_async = True
@@ -378,6 +381,31 @@ class Parser(Peeker):
                 name += self.read()
         return ast.Var(False, name)
 
+    def parse_braced_key(self):
+        assert self.read() == '{'
+        bit = self.parse_bareword()
+        if self.peek != '}':
+            raise ParseError(self, 'Mismatched brackets - got %s, expected }' % self.peek)
+        self.read()
+        return bit
+
+    def parse_path(self, bit, quoted_mode=False):
+        assert self.peek == '`'
+        keys = []
+        while self.peek == '`':
+            self.read()
+            if quoted_mode:
+                assert False # XXX
+            else:
+                if self.peek == '{':
+                    key = self.parse_braced_key()
+                elif self.peek in bareword_enders:
+                    key = ast.Lit('')
+                else:
+                    key = self.parse_bareword_nopath()
+            keys.append(key)
+        return ast.Path(False, bit, keys)
+
     def parse_comment(self):
         assert self.read() == '#'
         while self.read() != '\n':
@@ -391,7 +419,7 @@ if __name__ == '__main__':
     if len(sys.argv) >= 2:
         inp = open(sys.argv[1]).read()
     else:
-        inp = "foo'bar'\"baz\"` [bar bar >&1]\nhi do = x 6 } {=x 5}"
+        inp = "foo'bar'\"baz\"` [bar bar >&1]\nhi do = x 6 } {=x 5} (foo bar)`3``4`{$foo`4}"
     parsed = Parser(inp).parse_outer()
     print(parsed)
     print()

@@ -40,21 +40,22 @@ class Var(collections.namedtuple('Var', [
         return ('&' if self.is_ref else '') + '$' + self.name
 
 # &foo`bar```
-# indexes
-class Index(collections.namedtuple('Index', [
-    'is_ref', 'base', 'indexes',
+# keys
+class Path(collections.namedtuple('Path', [
+    'is_ref', 'base', 'keys',
     ]), Node):
     def repr(self):
         out = ''
         if self.is_ref:
             out += '&'
         out += self.base.repr()
-        for index in self.indexes:
+        print(self)
+        for key in self.keys:
             out += '`'
-            if isinstance(index, Index):
-                out += '{' + index.repr() + '}'
+            if isinstance(key, Path):
+                out += '{' + key.repr() + '}'
             else:
-                out += index.repr()
+                out += key.repr()
         return out
 
 # <file
@@ -133,8 +134,8 @@ if __name__ == '__main__':
         Expand(Lit('bar')),
         Var(False, 'var'),
         Var(True, 'ref'),
-        Index(True, Var(False, 'var'), [
-            Index(False, Lit('foo'), [Lit('bar')]),
+        Path(True, Var(False, 'var'), [
+            Path(False, Lit('foo'), [Lit('bar')]),
             Lit('hi there'),
         ]),
         Sequence([
