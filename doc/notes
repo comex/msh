@@ -96,5 +96,8 @@ Special rules for arguments starting with -
 
     Todo: Is it worth it to have -*$foo = *[opts $foo]?  Reserve this.
 
+Todo: What about bash's {a,b} and [abc]?  Perhaps use %{} or something
+
 built-in commands
+
 

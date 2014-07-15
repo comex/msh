@@ -10,13 +10,13 @@ class Expand(collections.namedtuple('Expand',
         return '*' + self.sub.repr()
 
 class Lit(collections.namedtuple('Lit', [
-    'value',
+    'str',
     ]), Node):
     def repr(self):
         fancy = False
 
         out = ''
-        for char in self.value:
+        for char in self.str:
             # real version should be more unicode-respectful
             if not curses.ascii.isprint(char) or (curses.ascii.isspace(char) and char != ' '):
                 fancy = True
@@ -40,7 +40,7 @@ class Var(collections.namedtuple('Var', [
         return ('&' if self.is_ref else '') + '$' + self.name
 
 # &foo`bar```
-# indexes 
+# indexes
 class Index(collections.namedtuple('Index', [
     'is_ref', 'base', 'indexes',
     ]), Node):
@@ -75,6 +75,7 @@ class Redir(collections.namedtuple('Redir', [
         out += ('<-', '->')[self.dir is OUT]
         out += self.endpoint.repr()
         return out
+
 class RedirOtherFd(collections.namedtuple('RedirOtherFd', [
     'fd', 'fd2',
     ])):
@@ -101,14 +102,30 @@ class List(collections.namedtuple('List',
     def repr(self):
         return '(' + ' '.join(elem.repr() for elem in self.elems) + ')'
 
+# {cmds...}
+class Block(collections.namedtuple('Block',
+    'exec',
+    ), Node):
+    def repr(self):
+        return '{' + self.exec.repr()[1:-1] + '}'
+
 # [cmd | cmd2 | cmd3]
 # cmds must be Execs
-class Pipe(collections.namedtuple('List',
+class Pipe(collections.namedtuple('Pipe',
     'cmds',
     ), Node):
     def repr(self):
         assert all(isinstance(cmd, Exec) for cmd in self.cmds)
         return '[' + ' | '.join(cmd.repr()[1:-1] for cmd in self.cmds) + ']'
+
+# [cmd; cmd2; cmd3]
+# lower precedence than pipes, obviously; also must be execs
+class Sequence(collections.namedtuple('Sequence',
+    'cmds',
+    ), Node):
+    def repr(self):
+        assert all(isinstance(cmd, Exec) for cmd in self.cmds)
+        return '[' + '; '.join(cmd.repr()[1:-1] for cmd in self.cmds) + ']'
 
 if __name__ == '__main__':
     x = List([
@@ -120,18 +137,21 @@ if __name__ == '__main__':
             Index(False, Lit('foo'), [Lit('bar')]),
             Lit('hi there'),
         ]),
-        Exec(
-            Lit('some cmd'),
-            [Lit('foo'), Lit('->'), Lit('&')],
-            [
-                Redir(0, IN, Pipe([
-                    Exec(Lit('cat'), [Lit('filename')], [], False),
-                    Exec(Lit('cat'), [Lit('filename2')], [], False),
-                ])),
-                Redir(2, OUT, Var(True, 'err')),
-                RedirOtherFd(3, 2),
-            ],
-            is_async=True,
-        ),
+        Sequence([
+            Exec(
+                Lit('some cmd'),
+                [Lit('foo'), Lit('->'), Lit('&')],
+                [
+                    Redir(0, IN, Pipe([
+                        Exec(Lit('cat'), [Lit('filename')], [], False),
+                        Exec(Lit('cat'), [Lit('filename2')], [], False),
+                    ])),
+                    Redir(2, OUT, Var(True, 'err')),
+                    RedirOtherFd(3, 2),
+                ],
+                is_async=True,
+            ),
+            Exec(Lit('next cmd'), [], [], is_async=True),
+        ]),
     ])
-    print x.repr()
+    print(x.repr())
