@@ -13,6 +13,8 @@ class Lit(collections.namedtuple('Lit', [
     'str',
     ]), Node):
     def repr(self):
+        if self.str == '':
+            return '""'
         fancy = False
 
         out = ''
@@ -24,7 +26,7 @@ class Lit(collections.namedtuple('Lit', [
             elif char in '"\\$':
                 fancy = True
                 out += '\\' + char
-            elif char in ' `()[]&<>~*?|':
+            elif char in ' `()[]&<>~*?|{}':
                 fancy = True
                 out += char
             else:
@@ -49,7 +51,6 @@ class Path(collections.namedtuple('Path', [
         if self.is_ref:
             out += '&'
         out += self.base.repr()
-        print(self)
         for key in self.keys:
             out += '`'
             if isinstance(key, Path):

@@ -97,6 +97,8 @@ class Parser(Peeker):
         bits = []
         the_str = ''
         while self.peek != '"':
+            if self.peek is None:
+                raise ParseError(self, 'end of input in ""')
             c = self.read()
             if c == '\\':
                 self.rewind()
@@ -116,6 +118,7 @@ class Parser(Peeker):
                         bit = self.parse_path(bit, quoted_mode=True)
                     if self.peek != '}':
                         raise ParseError(self, '${} not closed')
+                    self.read()
                     bits.append(bit)
                 else:
                     self.rewind()
@@ -135,6 +138,8 @@ class Parser(Peeker):
         assert self.read() == "'"
         out = ''
         while self.peek != "'":
+            if self.peek is None:
+                raise ParseError(self, "end of input in ''")
             out += self.read()
         self.read() # '
         return out
@@ -149,7 +154,6 @@ class Parser(Peeker):
         return bit
 
     def parse_bareword_nopath(self, is_cmd=False, async_ok=False):
-        bits = []
         the_str = ''
         is_glob = False
         # special rule to, e.g., allow '=x 1' rather than '= x 1'
@@ -189,7 +193,11 @@ class Parser(Peeker):
             return ast.Block(self.parse_exec_(re.compile('}|done')))
         elif self.peek == '(':
             return self.parse_list()
+        else:
+            return self.parse_bareword_inner(the_str, is_glob)
 
+    def parse_bareword_inner(self, the_str, is_glob):
+        bits = []
         def add_this_bit():
             nonlocal the_str, is_glob
             if the_str:
@@ -254,7 +262,7 @@ class Parser(Peeker):
             bits.append(bit)
         m = self.peek_re(ender)
         if not m:
-            raise ParseError(self, 'Mismatched brackets - got %s, expected %s' % (self.peek, (ender or '<end of data>')))
+            raise ParseError(self, 'Mismatched brackets - got %s, expected %s' % (self.peek, (ender or '<end of input>')))
         if self.peek is not None:
             self.read(len(m.group(0)))
         return bits[0] if len(bits) == 1 else ast.Sequence(bits)
@@ -381,7 +389,17 @@ class Parser(Peeker):
                 name += self.read()
         return ast.Var(False, name)
 
-    def parse_braced_key(self):
+    def parse_quoted_key(self):
+        # no need to overcomplicate things
+        key = ''
+        while self.peek not in {'"', '}', '`'}:
+            if self.peek == '\\':
+                key += self.translate_escape()
+            else:
+                key += self.read()
+        return ast.Lit(key)
+
+    def parse_braced_key(self, quoted_mode):
         assert self.read() == '{'
         bit = self.parse_bareword()
         if self.peek != '}':
@@ -394,12 +412,12 @@ class Parser(Peeker):
         keys = []
         while self.peek == '`':
             self.read()
-            if quoted_mode:
-                assert False # XXX
+            if self.peek == '{':
+                key = self.parse_braced_key(quoted_mode)
+            elif quoted_mode:
+                key = self.parse_quoted_key()
             else:
-                if self.peek == '{':
-                    key = self.parse_braced_key()
-                elif self.peek in bareword_enders:
+                if self.peek in bareword_enders:
                     key = ast.Lit('')
                 else:
                     key = self.parse_bareword_nopath()
@@ -419,7 +437,7 @@ if __name__ == '__main__':
     if len(sys.argv) >= 2:
         inp = open(sys.argv[1]).read()
     else:
-        inp = "foo'bar'\"baz\"` [bar bar >&1]\nhi do = x 6 } {=x 5} (foo bar)`3``4`{$foo`4}"
+        inp = "foo'bar'\"baz\"` [bar bar >&1]\nhi do = x 6 } {=x 5} (foo bar)`3``4`{$foo`4} \"${foo`bar`baz}\""
     parsed = Parser(inp).parse_outer()
     print(parsed)
     print()
