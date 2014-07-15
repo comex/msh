@@ -40,7 +40,6 @@ expect-output<<
 4
 len = 6
 Hi
-mm
 0 -> 0
 1 -> 0
 2 -> 0

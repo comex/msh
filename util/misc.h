@@ -8,6 +8,14 @@ static inline size_t safe_mul(size_t a, size_t b) {
    return res;
 }
 
+static inline size_t _min(size_t a, size_t b) {
+   return a < b ? a : b;
+}
+
+static inline size_t _max(size_t a, size_t b) {
+   return a > b ? a : b;
+}
+
 #define LET_LOOP__(expr, ctr) \
    if(0) \
       __done_##ctr: continue; \
@@ -52,3 +60,7 @@ static inline void defer_cleanup(void (^*cb)()) {
    void __defer_func_##ctr(int *__defer_dummy)
 #endif
 
+struct allocator {
+   void *(*realloc_func)(void *ptr, size_t oldsize, size_t size, void *ctx);
+   void *ctx;
+};

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 cd "$(dirname "${BASH_SOURCE[0]}")"
-TESTS="misctest.c vectest.c"
+TESTS=(misctest.c vectest.c alstacktest.c)
 if [ -n "$CC" ]; then
    CCS=("$CC")
 else
@@ -9,7 +9,7 @@ else
       "gcc-4.8"
    )
 fi
-for file in $TESTS; do
+for file in "${TESTS[@]}"; do
    for cc in "${CCS[@]}"; do
       echo "<$file $cc>"
       $cc -std=gnu11 -O3 -I../.. -o thetest $file

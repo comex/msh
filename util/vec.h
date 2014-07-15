@@ -29,7 +29,7 @@ static inline void vec_realloc_internal(struct vec_internal *vi, size_t n, size_
       n = vi->capacity * 2;
    size_t new_size = safe_mul(n, esize);
    if (vi->base == vi->vi_storage) {
-      void *storage = malloc(new_size);
+      void *storage = realloc(NULL, new_size);
       memcpy(storage, vi->base, vi->length * esize);
       vi->base = storage;
    } else {
