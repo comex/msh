@@ -11,16 +11,18 @@ fi
 if [ -n "$1" ]; then
    for file in "$@"; do
       for cc in "${CCS[@]}"; do
-         echo "<$file $cc>"
          thetest=thetest.$$
-         $cc -std=gnu11 -O3 -o $thetest $file
+         CMD=($cc -std=gnu11 -O3 -o $thetest $file)
+         echo "${CMD[*]}"
+         "${CMD[@]}"
          set +e
          actual="$(./$thetest)"
          actual_ec=$?
          set -e
+         rm ./$thetest
          expected="$(awk '/^>>/{on=0} on{print} /^expect-output<</{on=1}' $file)"
          if [ "$actual" != "$expected" ]; then
-            echo "$file ($thetest) output differs.  Actual:"
+            echo "$file output differs.  Actual:"
             echo "$actual"
             echo "Expected:"
             echo "$expected"
@@ -33,7 +35,6 @@ if [ -n "$1" ]; then
             bad=1
          fi
          test -z $bad
-         rm $thetest
       done
    done
 else

@@ -1,5 +1,5 @@
 #pragma once
 #include "vec.h"
 
-DECL_VEC(int);
-DECL_VEC(char);
+DECL_VEC(int, int);
+DECL_VEC(char, char);
