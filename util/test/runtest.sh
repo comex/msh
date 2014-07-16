@@ -13,7 +13,7 @@ if [ -n "$1" ]; then
       for cc in "${CCS[@]}"; do
          echo "<$file $cc>"
          thetest=thetest.$$
-         $cc -std=gnu11 -O3 -I../.. -o $thetest $file
+         $cc -std=gnu11 -O3 -o $thetest $file
          set +e
          actual="$(./$thetest)"
          actual_ec=$?

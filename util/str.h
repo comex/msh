@@ -1,5 +1,5 @@
 #pragma once
-#include "util/vecs.h"
+#include "vecs.h"
 #include <stdarg.h>
 
 typedef VEC(char) str;

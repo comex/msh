@@ -1,4 +1,4 @@
-#include "util/time.h"
+#include "../time.h"
 #include <unistd.h>
 
 int main() {
@@ -8,7 +8,7 @@ int main() {
    ensure(b > a + 5);
 }
 
-#include "util/time.c"
+#include "../time.c"
 
 /*
 expect-exit 0

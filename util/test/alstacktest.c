@@ -1,4 +1,4 @@
-#include "util/alstack.h"
+#include "../alstack.h"
 #include <stdio.h>
 
 int main() {
@@ -26,7 +26,7 @@ int main() {
 
 }
 
-#include "util/alstack.c"
+#include "../alstack.c"
 
 /*
 expect-output<<

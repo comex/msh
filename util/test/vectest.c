@@ -1,4 +1,4 @@
-#include "util/vecs.h"
+#include "../vecs.h"
 #include <stdio.h>
 
 __attribute__((noinline))

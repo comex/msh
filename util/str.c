@@ -1,4 +1,4 @@
-#include "util/str.h"
+#include "str.h"
 
 size_t str_cpy(str *str, const char *restrict cstr) {
    size_t len = strlen(cstr);

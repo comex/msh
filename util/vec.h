@@ -1,5 +1,5 @@
 #pragma once
-#include "util/misc.h"
+#include "misc.h"
 #include <stdlib.h>
 #include <string.h>
 
