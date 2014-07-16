@@ -33,6 +33,7 @@ if [ -n "$1" ]; then
             bad=1
          fi
          test -z $bad
+         rm $thetest
       done
    done
 else

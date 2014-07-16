@@ -1,15 +1,23 @@
 #include "alstack.h"
 
-void alstack_freeze(const struct alstack *stk) {
-   // XXX
+static void *alstack_free_list;
+
+struct alstack alstack_new() {
+   // 64MB is probably too big for allocators to bother with
+   void *alloc;
+   if (!alstack_free_list) {
+      alloc = malloc(ALSTACK_SIZE);
+   } else {
+      alloc = alstack_free_list;
+      alstack_free_list = *(void **) alloc;
+   }
+   return (struct alstack) { alloc, alloc, (char *) alloc + ALSTACK_SIZE };
 }
 
-void _alstack_expand(const struct alstack *stk, size_t size) {
-   size_t new_size = _max(stk->size * 2, safe_add(stk->size, size));
-   if (new_size >= 0x100000000)
-      abort();
-   void *new = realloc(stk->begin, new_size);
-   if (!new)
-      abort();
-   stk->size = new_size;
+void alstack_del(struct alstack *stk) {
+   void *alloc = stk->begin;
+   *(void **) alloc = alstack_free_list;
+   alstack_free_list = alloc;
+   stk->begin = stk->cur = stk->end = NULL;
+
 }
