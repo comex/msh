@@ -3,11 +3,17 @@
 
 static inline size_t safe_mul(size_t a, size_t b) {
    size_t res = a * b;
-   if(res / b != a)
+   if (res / b != a)
       abort();
    return res;
 }
 
+static inline size_t safe_add(size_t a, size_t b) {
+   size_t res = a + b;
+   if (res < a)
+      abort();
+   return res;
+}
 static inline size_t _min(size_t a, size_t b) {
    return a < b ? a : b;
 }
@@ -17,9 +23,9 @@ static inline size_t _max(size_t a, size_t b) {
 }
 
 #define LET_LOOP__(expr, ctr) \
-   if(0) \
+   if (0) \
       __done_##ctr: continue; \
-   else if(0) \
+   else if (0) \
       __break_##ctr: break; \
    else \
       for (; ; ({ goto __break_##ctr; })) \
@@ -29,7 +35,7 @@ static inline size_t _max(size_t a, size_t b) {
 #define LET_LOOP(expr) LET_LOOP_(expr, __COUNTER__)
 
 #define LET__(expr, ctr) \
-   if(0) \
+   if (0) \
       __done_##ctr: ; \
    else \
       for (expr; ; ({ goto __done_##ctr; }))

@@ -1,5 +1,5 @@
 #pragma once
-#include "misc.h"
+#include "util/misc.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -48,20 +48,23 @@ static inline void vec_free_internal(struct vec_internal *vi) {
       typeof(ty) rest[(n)-1]; \
    }
 
+#define vec_empty() \
+   {0, 0, NULL}
+
 #define vec_storage_init(vs) do { \
    (vs)->v.length = 0; \
    (vs)->v.capacity = (sizeof((vs)->rest) / sizeof((vs)->rest[0])) + 1; \
    (vs)->v.base = (vs)->v.storage; \
 } while (0)
 
-#define vec_stackalloc_capa(vec, ty, n) /* can't use do */ \
+#define vec_stackalloc_capa(vecp, ty, n) /* can't use do */ \
    VEC_STORAGE(ty, n) vec##__storage; \
    vec_storage_init(&vec##__storage); \
-   vec = &vec##__storage.v
+   *(vecp) = &vec##__storage.v
 
 #define VEC_DEFAULT_CAPA 5
 
-#define vec_stackalloc(vec, ty) vec_stackalloc_capa(vec, ty, VEC_DEFAULT_CAPA)
+#define vec_stackalloc(vecp, ty) vec_stackalloc_capa(vecp, ty, VEC_DEFAULT_CAPA)
 
 // manipulation
 
@@ -75,7 +78,7 @@ static inline void vec_free_internal(struct vec_internal *vi) {
    &(vec)->base[n]; \
 })
 
-#define vresize(vec, n) ({ \
+#define vec_resize(vec, n) ({ \
    typeof(vec) __vec = (vec); \
    size_t __n = (n); \
    if (__n >= __vec->capacity || (__vec->base != __vec->storage && __n * 2 < __vec->capacity)) \
@@ -87,8 +90,15 @@ static inline void vec_free_internal(struct vec_internal *vi) {
 #define vappend(vec, val) ({ \
    typeof(vec) __vec = (vec); \
    size_t __l = __vec->length; \
-   vresize(__vec, __l + 1); \
+   vec_resize(__vec, __l + 1); \
    vset(__vec, __l, val); \
+})
+
+#define vec_concat(vec, vec2) ({ \
+   typeof(vec) __vec = (vec), __vec2 = (vec2); \
+   size_t __l = __vec->length; \
+   vec_resize(__vec, safe_add(__l, __vec2->length)); \
+   memcpy(vgetp(__vec, __l), __vec2->base, __vec2->length); \
 })
 
 #define vec_zero(vec) ({ \
@@ -99,6 +109,9 @@ static inline void vec_free_internal(struct vec_internal *vi) {
 #define vec_free(vec) \
    vec_free_internal(&(vec)->vi)
 
+#define vec_clear(vec) \
+   vec_resize(vec, 0)
+
 #define vec_foreach(vec, idxvar, valvar) \
    LET(typeof(vec) __vec = vec) \
       for (size_t idxvar = 0; idxvar < __vec->length; idxvar++) \
@@ -108,3 +121,11 @@ static inline void vec_free_internal(struct vec_internal *vi) {
    LET(typeof(vec) __vec = vec) \
       for (idxvar = 0; idxvar < __vec->length; idxvar++) \
          LET_LOOP(valvar = vget(__vec, idxvar))
+
+#define vec_borrow(ty, ptr, n) \
+   ({ \
+      size_t __n = (n); \
+      ((VEC(ty)) {{ __n, __n, (ptr) }}); \
+   })
+
+

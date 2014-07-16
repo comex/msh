@@ -1,18 +1,16 @@
-#include "util/vec.h"
+#include "util/vecs.h"
 #include <stdio.h>
-
-DECL_VEC(int);
 
 __attribute__((noinline))
 int foo(VEC(int) *vi) {
-   vresize(vi, 6);
+   vec_resize(vi, 6);
    vset(vi, 5, 4);
    return vget(vi, 5);
 }
 
 int main() {
    VEC(int) *vi;
-   vec_stackalloc(vi, int);
+   vec_stackalloc(&vi, int);
    printf("%d\n", foo(vi));
    VEC_STORAGE(int, 5) vi2;
    vec_storage_init(&vi2);
