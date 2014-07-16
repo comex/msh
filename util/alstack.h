@@ -1,33 +1,39 @@
 #pragma once
-#include "util/misc.h"
 #include <stdlib.h>
 #include <string.h>
 #define ALSTACK_ALIGN 7
-#define ALSTACK_SIZE (64*1024*1024)
+
+struct alstack_chunk_hdr {
+   void *begin;
+   struct alstack_chunk_hdr *prev;
+};
 
 struct alstack {
-   void *begin;
-   void *cur;
-   void *end;
+   void *chunk_cur;
+   struct alstack_chunk_hdr *chunk_end;
 };
 
 struct alstack alstack_new();
+void alstack_del(struct alstack *stk);
+static inline void *alstack_alloc(struct alstack *stk, size_t size);
+static inline void *alstack_zalloc(struct alstack *stk, size_t size);
+static inline void *alstack_tell(const struct alstack *stk);
+void alstack_pop_to(struct alstack *stk, void *tell);
+void *_alstack_alloc_expand(struct alstack *stk, size_t size);
+static inline struct allocator alstack_al(struct alstack *stk);
 
 static inline void *alstack_tell(const struct alstack *stk) {
-   return stk->cur;
-}
-
-static inline void *alstack_alloc_unchecked(struct alstack *stk, size_t size) {
-   void *ret = stk->cur;
-   size = (size + ALSTACK_ALIGN) & ~ALSTACK_ALIGN;
-   stk->cur = (char *) ret + size;
-   return ret;
+   return stk->chunk_cur;
 }
 
 static inline void *alstack_alloc(struct alstack *stk, size_t size) {
-   if (size > (char *) stk->end - (char *) stk->cur)
-      abort();
-   return alstack_alloc_unchecked(stk, size);
+   if (size > (char *) stk->chunk_end - (char *) stk->chunk_cur) {
+      return _alstack_alloc_expand(stk, size);
+   }
+   void *ret = stk->chunk_cur;
+   size = (size + ALSTACK_ALIGN) & ~ALSTACK_ALIGN;
+   stk->chunk_cur = (char *) stk->chunk_cur + size;
+   return ret;
 }
 
 static inline void *alstack_zalloc(struct alstack *stk, size_t size) {
@@ -36,13 +42,7 @@ static inline void *alstack_zalloc(struct alstack *stk, size_t size) {
    return ptr;
 }
 
-static void alstack_pop_to(struct alstack *stk, void *tell) {
-   ensure(stk->begin <= tell && tell <= stk->end);
-   stk->cur = tell;
-}
-
-void alstack_del(struct alstack *stk);
-
+#include "misc.h"
 static inline void *_alstack_realloc_func(void *ptr, size_t oldsize, size_t size, void *ctx) {
    struct alstack *stk = ctx;
    void *new = alstack_alloc(stk, size);
