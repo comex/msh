@@ -1,5 +1,8 @@
 #pragma once
 #include <stdlib.h>
+#include <assert.h>
+
+#define ensure assert
 
 static inline size_t safe_mul(size_t a, size_t b) {
    size_t res = a * b;
@@ -70,3 +73,4 @@ struct allocator {
    void *(*realloc_func)(void *ptr, size_t oldsize, size_t size, void *ctx);
    void *ctx;
 };
+

@@ -4,12 +4,13 @@
 int main() {
    struct alstack stk = alstack_new();
    for (int i = 0; i < 10; i++) {
-      memset(alstack_alloc(&stk, 500), i, 500);
+      als_off buf = alstack_alloc(&stk, 500);
+      memset(ALSGET(&stk, buf), i, 500);
    }
-   memset(alstack_alloc(&stk, 100000), 0xde, 100000);
-   void *tell = alstack_tell(&stk);
+   memset(ALSGET(&stk, alstack_alloc(&stk, 100000), void *), 0xde, 100000);
+   als_off tell = alstack_tell(&stk);
    for (int i = 0; i < 10000; i++) {
-      *(char *) alstack_alloc(&stk, 1000000) = 123;
+      *ALSGET(&stk, alstack_alloc(&stk, 1000000), char *) = 123;
       if (i % 3 == 0)
          alstack_pop_to(&stk, tell);
    }
