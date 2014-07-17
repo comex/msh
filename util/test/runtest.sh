@@ -38,6 +38,6 @@ if [ -n "$1" ]; then
       done
    done
 else
-   echo 'misctest.c vectest.c alstacktest.c strtest.c timetest.c' | xargs -P 4 -n 1 ./runtest.sh
+   echo 'misctest.c vectest.c alstacktest.c strtest.c timetest.c chantest.c' | xargs -P 4 -n 1 ./runtest.sh
    echo "All OK"
 fi

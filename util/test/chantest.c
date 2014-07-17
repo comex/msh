@@ -15,7 +15,8 @@ static int handler(struct chanr *cr, void *data, size_t size, void *ctx) {
 }
 
 int main() {
-   struct chanr cr = chanr_new();
+   struct chanr cr;
+   chanr_init(&cr);
    struct event_loop *el = event_loop_new();
    event_loop_add_chanr(el, &cr, handler, (void *) 0x123);
    ensure(event_loop_remove_chanr(el, &cr) == (void *) 0x123);
@@ -27,13 +28,14 @@ int main() {
       ;
    ensure(received);
    ensure(event_loop_remove_chanr(el, &cr) == (void *) 0x234);
-   chanr_del(&cr);
    chanw_del(&cw);
+   chanr_del(&cr);
    return 0;
 }
 
 #include "../chan.c"
 #include "../event.c"
+#include "../tinycthread.c"
 
 /*
 expect-output<<
