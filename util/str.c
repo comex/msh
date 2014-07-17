@@ -44,7 +44,7 @@ int str_vcatf(str *str, const char *restrict format, va_list ap) {
       return len;
    size_t orig_len = str->length;
    vec_resize(str, orig_len + len);
-   if (len > have) {
+   if ((size_t) len > have) {
       return vsnprintf(str->base + orig_len, str->capacity - str->length, format, ap);
    } else
       return len;

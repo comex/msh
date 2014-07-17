@@ -27,7 +27,7 @@ static inline void *alstack_tell(const struct alstack *stk) {
 }
 
 static inline void *alstack_alloc(struct alstack *stk, size_t size) {
-   if (size > (char *) stk->chunk_end - (char *) stk->chunk_cur) {
+   if (size > (size_t) ((char *) stk->chunk_end - (char *) stk->chunk_cur)) {
       return _alstack_alloc_expand(stk, size);
    }
    void *ret = stk->chunk_cur;

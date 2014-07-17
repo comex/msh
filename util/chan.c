@@ -25,9 +25,9 @@ int chanr_fd_handler(int fd, short revents, void *ctx) {
    struct chan_ctx *cctx = ctx;
    ensure(revents & POLLIN);
    size_t msg_size;
-   ensure(read(fd, &msg_size, sizeof(msg_size)) == sizeof(msg_size));
+   ensure(read(fd, &msg_size, sizeof(msg_size)) == (ssize_t) sizeof(msg_size));
    void *rbuf = malloc(msg_size);
-   ensure(read(fd, rbuf, msg_size) == msg_size);
+   ensure(read(fd, rbuf, msg_size) == (ssize_t) msg_size);
    return cctx->userhandler(cctx->chanr, rbuf, msg_size, cctx->userctx);
 }
 
@@ -53,8 +53,8 @@ void chanr_del(struct chanr *chanr) {
 }
 
 void chanw_send(struct chanw *chanw, void *data, size_t size) {
-   ensure(write(chanw->wfd, &size, sizeof(size)) == sizeof(size));
-   ensure(write(chanw->wfd, data, size) == size);
+   ensure(write(chanw->wfd, &size, sizeof(size)) == (ssize_t) sizeof(size));
+   ensure(write(chanw->wfd, data, size) == (ssize_t) size);
 }
 
 void chanw_del(struct chanw *chanw) {

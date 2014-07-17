@@ -12,7 +12,7 @@ if [ -n "$1" ]; then
    for file in "$@"; do
       for cc in "${CCS[@]}"; do
          thetest=thetest.$$
-         CMD=($cc -std=gnu11 -O3 -o $thetest $file)
+         CMD=($cc -std=gnu11 -O3 -Wall -Wextra -Werror -o $thetest $file)
          echo "${CMD[*]}"
          "${CMD[@]}"
          set +e

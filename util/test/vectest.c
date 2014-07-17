@@ -28,7 +28,7 @@ int main() {
       printf("%zd -> %d\n", i, *n);
    }
    size_t i;
-   vec_foreach_noidxdecl(vi2p, i, int *n) {
+   vec_foreach_noidxdecl(vi2p, i, UNUSED int *n) {
       break;
    }
 

@@ -89,8 +89,8 @@ static inline void vec_free_internal(struct vec_internal *vi) {
 
 // avoid sequence isseus
 #define vgetp(vec, n) ({ \
-   size_t _n = (n); \
-   &vec_storage_to_vec(vec)->base[n]; \
+   size_t __vgpn = (n); \
+   &vec_storage_to_vec(vec)->base[__vgpn]; \
 })
 
 #define vec_resize(vec, n) ({ \

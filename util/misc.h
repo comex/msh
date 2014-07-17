@@ -58,16 +58,18 @@ static inline void defer_cleanup(void (^*cb)()) {
    (*cb)();
 }
 #define defer__(ctr) \
-   __attribute__((cleanup(defer_cleanup))) \
+   __attribute__((unused, cleanup(defer_cleanup))) \
    void (^__defer_##ctr)() = ^()
 #else
 #define defer__(ctr) \
    __attribute__((always_inline)) \
    auto inline void __defer_func_##ctr(int *); \
-   __attribute__((cleanup(__defer_func_##ctr))) \
+   __attribute__((unused, cleanup(__defer_func_##ctr))) \
    int __defer_dummy_##ctr; \
-   void __defer_func_##ctr(int *__defer_dummy)
+   void __defer_func_##ctr(UNUSED int *__defer_dummy)
 #endif
+
+#define UNUSED __attribute__((unused))
 
 struct allocator {
    void *(*realloc_func)(void *ptr, size_t oldsize, size_t size, void *ctx);
