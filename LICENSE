@@ -1,0 +1,6 @@
+With the exception of any files starting with a copyright header (currently
+tinycthreads):
+
+Code under util/ is public domain.
+
+The rest is LGPLv2.1+.
