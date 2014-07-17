@@ -16,6 +16,7 @@ int main() {
    event_loop_add_fd(el, fds[0], POLLIN, handler, (void *) 0xdeadbeef);
    ensure(write(fds[1], "a", 1) == 1);
    ensure(event_loop_poll(el) == -4);
+   ensure(event_loop_remove_fd(el, fds[0]) == (void *) 0xdeadbeef);
    event_loop_free(el);
    return 0;
 }

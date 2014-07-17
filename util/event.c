@@ -27,12 +27,13 @@ void event_loop_add_fd(struct event_loop *el, int fd, short events, event_loop_f
     vappend(&el->pollfds, (struct pollfd) {.fd = fd, .events = events});
 }
 
-void event_loop_remove_fd(struct event_loop *el, int fd) {
+void *event_loop_remove_fd(struct event_loop *el, int fd) {
     vec_foreach(&el->pollfds, i, struct pollfd *pollfd) {
         if (pollfd->fd == fd) {
+            void *ret = vgetp(&el->hacs, i)->ctx;
             vec_remove(&el->pollfds, i, 1);
             vec_remove(&el->hacs, i, 1);
-            return;
+            return ret;
         }
     }
     fprintf(stderr, "%s: fd %d not found\n", __func__, fd);
@@ -48,13 +49,15 @@ int event_loop_poll(struct event_loop *el) {
     int ret = poll(vgetp(&el->pollfds, 0), vlen(&el->pollfds), 0);
     if (ret < 0)
         return ret;
+    int n = 0;
     vec_foreach(&el->pollfds, i, struct pollfd *pollfd) {
         if (pollfd->revents) {
             struct handler_and_ctx *hac = vgetp(&el->hacs, i);
             ret = hac->handler(pollfd->fd, pollfd->revents, hac->ctx);
             if (ret < 0)
                 return ret;
+            n++;
         }
     }
-    return 0;
+    return n;
 }
