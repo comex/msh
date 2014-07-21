@@ -1,20 +1,25 @@
 #pragma once
 #include <stdlib.h>
 #include <assert.h>
+#include <stdnoreturn.h>
 
-#define ensure assert
+#define ensure assert // for now
+
+#ifndef static_assert // <assert.h> is supposed to provide this
+#define static_assert _Static_assert
+#endif
 
 static inline size_t safe_mul(size_t a, size_t b) {
    size_t res = a * b;
    if (res / b != a)
-      abort();
+      ensure(!"safe_mul overflow");
    return res;
 }
 
 static inline size_t safe_add(size_t a, size_t b) {
    size_t res = a + b;
    if (res < a)
-      abort();
+      ensure(!"safe_add overflow");
    return res;
 }
 static inline size_t _min(size_t a, size_t b) {

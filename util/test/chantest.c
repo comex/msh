@@ -5,11 +5,10 @@
 
 static bool received;
 
-static int handler(struct chanr *cr, void *data, size_t size, void *ctx) {
+static int handler(struct chanr *cr, void *data, void *ctx) {
    (void) cr;
    ensure(ctx == (void *) 0x234);
-   ensure(size == 5 && !memcmp(data, "hello", 5));
-   free(data);
+   ensure(!strcmp(data, "hello"));
    received = true;
    return 0;
 }
@@ -23,7 +22,7 @@ int main() {
    event_loop_add_chanr(el, &cr, handler, (void *) 0x234);
 
    struct chanw cw = chanr_make_writer(&cr);
-   chanw_send(&cw, "hello", 5);
+   chanw_send(&cw, "hello");
    while (!event_loop_poll(el))
       ;
    ensure(received);
@@ -35,7 +34,6 @@ int main() {
 
 #include "../chan.c"
 #include "../event.c"
-#include "../tinycthread.c"
 
 /*
 expect-output<<
