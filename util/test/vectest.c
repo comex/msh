@@ -22,6 +22,8 @@ int main() {
    vset(vi2p, 5, 3);
    vec_add_space(vi2p, 4, 3);
    vset(vi2p, 4, 42);
+   vset(vi2p, 5, 0);
+   vset(vi2p, 6, 0);
    vec_remove(vi2p, 3, 2);
    printf("len = %zd\n", vi2.v.length);
    vec_foreach(({ printf("Hi\n"); vi2p; }), i, int *n) {
@@ -47,7 +49,7 @@ Hi
 0 -> 0
 1 -> 0
 2 -> 0
-3 -> 3
+3 -> 0
 4 -> 0
 5 -> 0
 6 -> 3

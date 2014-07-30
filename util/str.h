@@ -3,8 +3,17 @@
 #include <stdarg.h>
 
 typedef VEC(char) str;
-#define STR_DEFAULT_CAPA 64
-#define str_stackalloc(strp) vec_stackalloc_capa(strp, char, STR_DEFAULT_CAPA)
+#define str_stackalloc_capa(strp, capa) \
+    str_stackalloc_capa_(strp, capa, __COUNTER__)
+#define str_stackalloc_capa_(strp, capa, ctr) \
+    str_stackalloc_capa__(strp, capa, ctr)
+#define str_stackalloc_capa__(strp, capa, ctr) \
+    VEC_STORAGE_CAPA(char, capa) __str_stackalloc_##ctr; \
+    vec_storage_init(&__str_stackalloc_##ctr); \
+    *(strp) = &__str_stackalloc_##ctr.v;
+
+#define str_stackalloc(strp) \
+    str_stackalloc_capa(strp, 64)
 
 size_t str_cpy(str *str, const char *restrict cstr);
 int str_cpyf(str *str, const char *restrict format, ...);

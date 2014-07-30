@@ -11,8 +11,8 @@ DECL_VEC(struct pollfd, pollfd);
 DECL_VEC(struct handler_and_ctx, handler_and_ctx);
 
 struct event_loop {
-    VEC_STORAGE(handler_and_ctx, 5) hacs;
-    VEC_STORAGE(pollfd, 5) pollfds;
+    VEC_STORAGE(handler_and_ctx) hacs;
+    VEC_STORAGE(pollfd) pollfds;
 };
 
 struct event_loop *event_loop_new() {
