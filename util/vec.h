@@ -3,7 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Once more into the C macros.  So pointless?
+/*
+Once more into the C macros.  So pointless?
+I mean, it's a good demonstration of the benefits of C++.  On the other hand,
+it should handily beat std::vector for most tasks due to the small vector
+optimization...
+*/
+
 struct vec_internal {
    size_t length;
    size_t capacity;
@@ -12,64 +18,44 @@ struct vec_internal {
 };
 
 #define DECL_VEC(ty, name) \
+   typedef typeof(ty) __VEC_TY_##name; \
    union __VEC_##name { \
       char v[0]; \
       struct vec_internal vi; \
       struct { \
          size_t length; \
          size_t capacity; \
-         ty *base; \
-         ty storage[1]; \
+         VEC_TY(name) *base; \
+         VEC_TY(name) storage[1]; \
       }; \
    }
 
 #define VEC(name) union __VEC_##name
 
-static inline void vec_realloc_internal(struct vec_internal *vi, size_t n, size_t esize) {
-   if (n > vi->capacity && n < vi->capacity * 2)
-      n = vi->capacity * 2;
-   size_t new_size = safe_mul(n, esize);
-   if (vi->base == vi->vi_storage) {
-      void *storage = realloc(NULL, new_size);
-      memcpy(storage, vi->base, vi->length * esize);
-      vi->base = storage;
-   } else {
-      vi->base = realloc(vi->base, new_size);
-   }
-   vi->capacity = new_size;
-}
+void vec_realloc_internal(struct vec_internal *vi, size_t n, size_t esize);
 
 static inline void vec_free_internal(struct vec_internal *vi) {
    if (vi->base != vi->vi_storage)
       free(vi->base);
 }
 
-#define VEC_TY(ty) typeof(((VEC(ty) *) 0)->storage[0])
+#define VEC_TY(name) __VEC_TY_##name
 
-#define VEC_STORAGE(ty, n) \
+#define VEC_STORAGE_CAPA(ty, n) \
    struct { \
-      char is_vec_or_vec_storage[0]; \
       VEC(ty) v; \
       VEC_TY(ty) rest[(n)-1]; \
    }
 
-#define vec_empty() \
-   {0, 0, NULL}
+#define VEC_STORAGE(ty) \
+   VEC_STORAGE_CAPA(ty, 5)
 
 #define vec_storage_init(vs) do { \
-   (vs)->v.length = 0; \
-   (vs)->v.capacity = (sizeof((vs)->rest) / sizeof((vs)->rest[0])) + 1; \
-   (vs)->v.base = (vs)->v.storage; \
+   typeof(vs) __vs = (vs); \
+   __vs->v.length = 0; \
+   __vs->v.capacity = (sizeof(__vs->rest) / sizeof(__vs->rest[0])) + 1; \
+   __vs->v.base = __vs->v.storage; \
 } while (0)
-
-#define vec_stackalloc_capa(vecp, ty, n) /* can't use do */ \
-   VEC_STORAGE(ty, n) vec##__storage; \
-   vec_storage_init(&vec##__storage); \
-   *(vecp) = &vec##__storage.v
-
-#define VEC_DEFAULT_CAPA 5
-
-#define vec_stackalloc(vecp, ty) vec_stackalloc_capa(vecp, ty, VEC_DEFAULT_CAPA)
 
 // pointer to (vec storage, vec) -> pointer to vec
 #define vec_storage_to_vec(vsov) \

@@ -34,6 +34,7 @@ int main() {
 
 #include "../chan.c"
 #include "../event.c"
+#include "../vec.c"
 
 /*
 expect-output<<

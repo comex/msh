@@ -10,10 +10,10 @@ int foo(VEC(bazzie) *vi) {
 }
 
 int main() {
-   VEC(bazzie) *vi;
-   vec_stackalloc(&vi, bazzie);
-   printf("%d\n", foo(vi));
-   VEC_STORAGE(bazzie, 5) vi2;
+   VEC_STORAGE(bazzie) vi;
+   vec_storage_init(&vi);
+   printf("%d\n", foo(&vi.v));
+   VEC_STORAGE_CAPA(bazzie, 5) vi2;
    vec_storage_init(&vi2);
    printf("%d\n", foo(&vi2.v));
 
@@ -33,8 +33,10 @@ int main() {
    }
 
    vec_free(vi2p);
-   vec_free(vi);
+   vec_free(&vi);
 }
+
+#include "../vec.c"
 
 /*
 expect-output<<
